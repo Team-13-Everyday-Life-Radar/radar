@@ -1,5 +1,5 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% function out = extract_raw_data (in)
+% function out = PlotDemo (in)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % Copyright (c) 2014-2019, Infineon Technologies AG
@@ -27,12 +27,13 @@
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % DESCRIPTION:
-% This simple example demos the acquisition of data.
+% This simple example demos the usage of the Matlab Sensing Interface by 
+% configuring the chip and acquiring and plotting raw data.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %% cleanup and init
 % Before starting any kind of device the workspace must be cleared and the
-% MATLAB Interface must be included into the code. 
+% Matlab Interface must be included into the code. 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 clc
 disp('******************************************************************');
@@ -42,20 +43,26 @@ close all
 resetRS; % close and delete ports
 
 % 1. Create radar system object
-szPort = findRSPort; % scan all available ports
-oRS = RadarSystem(szPort); % setup object and connect to board
+szPort = findRSPort; % find the right COM Port
+oRS = RadarSystem(szPort); % creates the Radarsystem API object
 
-disp('Connected RadarSystem:');
-oRS %#ok<*NOPTS>
+% 2. Set endpoint properties
+% The automatic trigger runs after startup by default
+oRS.oEPRadarBase.stop_automatic_frame_trigger; % stop it to change values
+oRS.oEPRadarFMCW.lower_frequency_kHz = 24050000; % lower FMCW frequency
+oRS.oEPRadarFMCW.upper_frequency_kHz = 24220000; % upper FMCW frequency
+oRS.oEPRadarFMCW.tx_power = oRS.oEPRadarBase.max_tx_power;
+oRS.oEPRadarBase.num_chirps_per_frame = 1;
+oRS.oEPRadarBase.num_samples_per_chirp = 256; % up to 4095 for single RX channel
+oRS.oEPRadarBase.rx_mask = bin2dec('0011'); % enable RX1 & RX2 antenna
+oRS.oEPRadarFMCW.direction = 'Up Only';
 
-% 2. Enable automatic trigger with frame time 1s
-oRS.oEPRadarBase.set_automatic_frame_trigger(1000000);
+% 3. Trigger radar chirp, get the raw data and plot it
+[mxRawData, sInfo] = oRS.oEPRadarBase.get_frame_data; % get raw data
 
-while true
-    % 3. Trigger radar chirp and get the raw data
-    [mxRawData, sInfo] = oRS.oEPRadarBase.get_frame_data;
-    ydata = mxRawData; % get raw data
-    
-    disp(ydata);
-    
-end
+% 4. plot data
+plot([real(mxRawData(:,1)), imag(mxRawData(:,1)), ... % RX1 I&Q
+    real(mxRawData(:,2)), imag(mxRawData(:,2))]); %RX2 I&Q
+
+
+clearSP
