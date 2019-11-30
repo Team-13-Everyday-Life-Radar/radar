@@ -57,5 +57,4 @@ while true
     ydata = mxRawData; % get raw data
     
     disp(ydata);
-    
 end
